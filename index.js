@@ -90,8 +90,8 @@ function recursiveBfs(graph) {
   return order;
 }
 
-console.log('bfs',bfs(graph));
-console.log('bfs_rec', recursiveBfs(graph));
+// console.log('bfs',bfs(graph));
+// console.log('bfs_rec', recursiveBfs(graph));
 
 function recDfs(index, graph, covered) {
     if(covered[index]) {
@@ -106,7 +106,7 @@ function recDfs(index, graph, covered) {
     }
 }
 
-z
+
 function dfs(graph) {
   let covered = {};  
   for(index in graph) {
@@ -116,4 +116,77 @@ function dfs(graph) {
   return Object.keys(covered);
 }
 
-console.log('dfs_rec', dfs(graph));
+// console.log('dfs_rec', dfs(graph));
+
+
+const RULES = {
+  company: {
+    enable_roles: true,
+    enable_roles_management: true,
+  },
+  company_admin: true,
+  temp: (value) => value > 5,
+  // enable_roles: true,
+};
+
+const user = {
+  company: {
+    enable_roles: true,
+    enable_roles_management: true,
+    extra: 1,
+  },
+  company_admin: true,
+  temp: 10,
+}
+
+function matchBaseCase(i, objectToCompare, rules, covered) {
+  console.log(i, objectToCompare, rules, covered);
+  if(covered[i]) {
+    console.warn('Warning! duplicate flag found');
+  }
+
+  if(objectToCompare === undefined) {
+    console.error('object not defined');
+    return false;
+  }
+
+  if(!Object.keys(rules).length) {
+    if(typeof rules === "function") {
+      return rules(objectToCompare);
+    } else {
+      return rules === objectToCompare;
+    }
+  }
+
+  return 'continue';
+}
+
+function recursiveRuleUtil(i, objectToCompare, rules, covered) {
+  let baseCase = matchBaseCase(i, objectToCompare, rules, covered);
+  // console.log('base', baseCase);
+  if(baseCase !== 'continue') {
+    // console.log('called');
+    covered[i] = baseCase;
+    return baseCase;
+  }
+  
+
+  for(v in rules) {
+    if(covered[v]) {
+      continue;
+    }
+    recursiveRuleUtil(v, objectToCompare[v], rules[v], covered);
+  }
+}
+
+function matchRule(objectToCompare, rules) {
+  let covered = {}, final = true;
+
+  for(i in rules) {
+    final = recursiveRuleUtil(i, objectToCompare[i], rules[i], covered);
+    console.log('fin', covered);
+  }
+  return final;
+}
+
+console.log(matchRule(user, RULES));
