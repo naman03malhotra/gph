@@ -23,6 +23,7 @@ const graph = {
   f: {
     d: 1,
   },
+  x: { y:1 },
 };
 
 
@@ -89,5 +90,30 @@ function recursiveBfs(graph) {
   return order;
 }
 
-console.log(bfs(graph));
-console.log(recursiveBfs(graph));
+console.log('bfs',bfs(graph));
+console.log('bfs_rec', recursiveBfs(graph));
+
+function recDfs(index, graph, covered) {
+    if(covered[index]) {
+      return;
+    }
+    covered[index] = 1;
+    for(v in graph[index]) {
+      if(covered[v]) {
+        continue;
+      }
+      recDfs(v, graph, covered);
+    }
+}
+
+z
+function dfs(graph) {
+  let covered = {};  
+  for(index in graph) {
+    recDfs(index, graph, covered);
+  }
+
+  return Object.keys(covered);
+}
+
+console.log('dfs_rec', dfs(graph));
