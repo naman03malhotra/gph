@@ -170,7 +170,7 @@ const FUNCTION_EXECUTED = 'Function was executed for the given rule';
 const VALUE_EQUATED = (rules, sourceToCompare) => `Value equated for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
 
 function matchBaseCase(sourceToCompare, rules) {
-  
+  // checking if the source object is preset according to the rules
   if(sourceToCompare === undefined) {
     return {
       value: false,
@@ -178,6 +178,7 @@ function matchBaseCase(sourceToCompare, rules) {
     };
   }
 
+  // if there is a string match then do compare
   if(typeof rules === 'string') {
     return {
       value: rules === sourceToCompare, 
@@ -185,25 +186,31 @@ function matchBaseCase(sourceToCompare, rules) {
     };
   }
 
+  // if no more nested keys are present in the object then
   if(!Object.keys(rules).length) {
+    // check for function then execute it with the current value of source object
     if(typeof rules === "function") {
       return { 
         value: rules(sourceToCompare), 
         message: FUNCTION_EXECUTED 
       };
-    } else {
-      return { 
-        value: rules === sourceToCompare, message: VALUE_EQUATED(rules, sourceToCompare),
-      };
-    }
+    } 
+
+    // else match the value and return with message
+    return { 
+      value: rules === sourceToCompare, 
+      message: VALUE_EQUATED(rules, sourceToCompare),
+    };
   }
 
+  // return continue if no condition is matched
   return { value: 'continue' };
 }
 
 function recursiveRuleUtil(currentKey, sourceToCompare, rules, trace, DEBUG) {
   // initializing count with zero
   let count = 0;
+  
   // initializing result with true as rules inside a single object are always compared with AND  
   let result = true;
 
