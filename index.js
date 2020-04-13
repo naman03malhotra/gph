@@ -28,13 +28,13 @@ const graph = {
 
 
 function bfs(graph) {
-  let covered = {}, queue = [], order = [], toExplore;
+  let trace = {}, queue = [], order = [], toExplore;
 
   for (v in graph) {
-    if(covered[v]) {
+    if(trace[v]) {
       continue;
     }
-    covered[v] = 1;
+    trace[v] = 1;
     queue.push(v);
 
     while(queue.length != 0) {
@@ -42,10 +42,10 @@ function bfs(graph) {
       order.push(toExplore);
 
       for(e in graph[toExplore]) {
-        if(covered[e]) {
+        if(trace[e]) {
           continue;
         }
-        covered[e] = 1;
+        trace[e] = 1;
         queue.push(e);
       }
     }
@@ -55,36 +55,36 @@ function bfs(graph) {
 }
 
 
-function recursiveUtil(graph, queue, covered, order) {
+function recursiveUtil(graph, queue, trace, order) {
   if(!queue.length) {
     return;
   }
   let toExplore = queue.shift();
 
   for(e in graph[toExplore]) {
-    if(covered[e]) {
+    if(trace[e]) {
       continue;
     }
-    covered[e] = 1;
+    trace[e] = 1;
     queue.push(e);
     order.push(e);
   }
 
-  recursiveUtil(graph, queue, covered, order);
+  recursiveUtil(graph, queue, trace, order);
 }
 
 function recursiveBfs(graph) {
-  let covered = {}, queue = [], order = [], toExplore;
+  let trace = {}, queue = [], order = [], toExplore;
 
   for (v in graph) {
-    if(covered[v]) {
+    if(trace[v]) {
       continue;
     }
-    covered[v] = 1;
+    trace[v] = 1;
     queue.push(v);
     order.push(v);
 
-    recursiveUtil(graph, queue, covered, order);
+    recursiveUtil(graph, queue, trace, order);
   }
 
   return order;
@@ -93,27 +93,27 @@ function recursiveBfs(graph) {
 // console.log('bfs',bfs(graph));
 // console.log('bfs_rec', recursiveBfs(graph));
 
-function recDfs(index, graph, covered) {
-    if(covered[index]) {
+function recDfs(index, graph, trace) {
+    if(trace[index]) {
       return;
     }
-    covered[index] = 1;
+    trace[index] = 1;
     for(v in graph[index]) {
-      if(covered[v]) {
+      if(trace[v]) {
         continue;
       }
-      recDfs(v, graph, covered);
+      recDfs(v, graph, trace);
     }
 }
 
 
 function dfs(graph) {
-  let covered = {};  
+  let trace = {};  
   for(index in graph) {
-    recDfs(index, graph, covered);
+    recDfs(index, graph, trace);
   }
 
-  return Object.keys(covered);
+  return Object.keys(trace);
 }
 
 // console.log('dfs_rec', dfs(graph));
@@ -125,17 +125,12 @@ const RULES = {
       enable_roles_one: {
         enable_roles_two: true,
       },
-      // enable_roles_one: {
-      //   enable_roles_two: false,
-      // }
     },
-    // enable_roles: true,
     enable_roles_management: true,
   },
   company_admin: true,
   enable_roles: false,
   temp: (value) => value > 5,
-  // enable_roles: true,
 };
 
 const RULES1 = {
@@ -170,13 +165,13 @@ const user = {
 }
 
 const OBJECT_NOT_DEFINED = 'The given object is not defined in source object';
-const STRING_MATCHING = (rules, objectToCompare) => `String matching occured for the given rule, Rule data: ${rules}, Source data: ${objectToCompare}`;
+const STRING_MATCHING = (rules, sourceToCompare) => `String matching occured for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
 const FUNCTION_EXECUTED = 'Function was executed for the given rule';
-const VALUE_EQUATED = (rules, objectToCompare) => `Value equated for the given rule, Rule data: ${rules}, Source data: ${objectToCompare}`;
+const VALUE_EQUATED = (rules, sourceToCompare) => `Value equated for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
 
-function matchBaseCase(i, objectToCompare, rules, covered) {
+function matchBaseCase(sourceToCompare, rules) {
   
-  if(objectToCompare === undefined) {
+  if(sourceToCompare === undefined) {
     return {
       value: false,
       message: OBJECT_NOT_DEFINED,
@@ -185,78 +180,116 @@ function matchBaseCase(i, objectToCompare, rules, covered) {
 
   if(typeof rules === 'string') {
     return {
-      value: rules === objectToCompare, 
-      message: STRING_MATCHING(rules, objectToCompare),
+      value: rules === sourceToCompare, 
+      message: STRING_MATCHING(rules, sourceToCompare),
     };
   }
 
   if(!Object.keys(rules).length) {
     if(typeof rules === "function") {
       return { 
-        value: rules(objectToCompare), 
+        value: rules(sourceToCompare), 
         message: FUNCTION_EXECUTED 
       };
     } else {
       return { 
-        value: rules === objectToCompare, message: VALUE_EQUATED(rules, objectToCompare),
+        value: rules === sourceToCompare, message: VALUE_EQUATED(rules, sourceToCompare),
       };
     }
   }
 
-  return 'continue';
+  return { value: 'continue' };
 }
 
-function recursiveRuleUtil(i, objectToCompare, rules, covered, DEBUG) {
-  let count = 0, result = true;
-  let baseCase = matchBaseCase(i, objectToCompare, rules, covered);
-  const { value, message } = baseCase;
+function recursiveRuleUtil(currentKey, sourceToCompare, rules, trace, DEBUG) {
+  // initializing count with zero
+  let count = 0;
+  // initializing result with true as rules inside a single object are always compared with AND  
+  let result = true;
 
-  if(baseCase !== 'continue') {
-    covered.value = value;
-    covered.message = message;
+  // matching base case to exit from recursion
+  const { value, message } = matchBaseCase(sourceToCompare, rules);
+
+  // if base condition is met, then set trace value and message, and return boolean value
+  if(value !== 'continue') {
+    trace.value = value;
+    trace.message = message;
     return value;
   }
-  
 
-  for(v in rules) {
-    covered[v] = {};
-    result = result && recursiveRuleUtil(v, objectToCompare[v], rules[v], covered[v]);
+  // DFS in remaining nodes of the object
+  for(currentDeepKey in rules) {
+    // setting key in trace for next depth level
+    trace[currentDeepKey] = {};
+
+    // combining results using AND within a single rule
+    result = result && recursiveRuleUtil(currentDeepKey, sourceToCompare[currentDeepKey], rules[currentDeepKey], trace[currentDeepKey]);
+
+    // return result if the first negative case is encountered in case of AND
     if(!result) {
       return result;
     }
     count++;
   }
 
+  // this condition will hit when all the rules will be matched in case of AND
   if(count === Object.keys(rules).length) {
-    console.log('enas', i);
     return result;
   }
 }
 
-function matchRule(objectToCompare, rules, operator = 'and', DEBUG = false) {
-  let covered = {}, result = operator === 'and' ? true : false;
-
-  for(i in rules) {
-    covered[i] = {};
-    result = operator === 'and' ? (result && recursiveRuleUtil(i, objectToCompare, rules[i], covered[i])) : (result || recursiveRuleUtil(i, objectToCompare, rules[i], covered[i]));
-    if(operator === 'and' ? !result : result) {
-      return handleResult(result, covered, DEBUG);
-    }
-  }
-
-  return handleResult(result, covered, DEBUG);
-}
-
-console.log(matchRule(user, [RULE_OR_1, RULE_OR_2], 'or', true));
-
-function handleResult(result, covered, DEBUG) {
-  if(DEBUG) {
+function handleResult(result, trace, debug) {
+  // if debug mode is on, then return result with trace
+  if(debug) {
     return {
       result,
-      trace: covered,
+      trace,
     };
   }
 
-  return result;
+  return { result };
 }
+
+function matchRule({ source, rules, operator = 'and', debug = false }) {
+  const trace = {};
+  // initial value for result to compare with based on the operator
+  let result = operator === 'and' ? true : false; 
+
+  // condition to handle if a single role is passed
+  rules = Array.isArray(rules) ? rules : [rules];
+
+  // outer loop to iterate multiple rules
+  for(rule in rules) {
+    // initializing empty trace object with key of first rule
+    trace[rule] = {};
+
+    // update and compare with true if the operator is AND, with false if the operator is OR 
+    result = operator === 'and' ? (result && recursiveRuleUtil(rule, source, rules[rule], trace[rule])) : (result || recursiveRuleUtil(rule, source, rules[rule], trace[rule]));
+
+    /** 
+     * return result if the first negative case is encountered in case of AND
+     * return result if the first positive case is encountered in case of OR
+    */
+    if(operator === 'and' ? !result : result) {
+      return handleResult(result, trace, debug);
+    }
+  }
+
+  // this condition will hit when all the rules will be matched in case of AND, and no rules being matched in case of OR
+  return handleResult(result, trace, debug);
+}
+
+const config = {
+  // source and rules are required
+  source: user,
+  rules: RULE_OR_1,
+  // (optional) default 'and'
+  operator: 'or',
+  // (optional) default false
+  debug: true,
+}
+
+console.log(matchRule(config));
+
+
 
