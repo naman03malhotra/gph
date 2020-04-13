@@ -121,72 +121,142 @@ function dfs(graph) {
 
 const RULES = {
   company: {
-    enable_roles: true,
+    enable_roles: {
+      enable_roles_one: {
+        enable_roles_two: true,
+      },
+      // enable_roles_one: {
+      //   enable_roles_two: false,
+      // }
+    },
+    // enable_roles: true,
     enable_roles_management: true,
   },
   company_admin: true,
+  enable_roles: false,
   temp: (value) => value > 5,
   // enable_roles: true,
 };
 
-const user = {
+const RULES1 = {
   company: {
-    enable_roles: true,
-    enable_roles_management: true,
-    extra: 1,
+    country: 'us',
   },
-  company_admin: true,
-  temp: 10,
+},
+
+const RULE_OR_1 = {
+  role: 'role_admin',
 }
 
+const RULE_OR_2 = {
+  company_admin: true,
+}
+
+const user = {
+  company: {
+    enable_roles: {
+      enable_roles_one: {
+        enable_roles_two: true,
+      }
+    },
+    enable_roles_management: true,
+    extra: 1,
+    country: 'us',
+  },
+  enable_roles: false,
+  company_admin: true,
+  temp: 10,
+  role: 'role_admin',
+}
+
+const OBJECT_NOT_DEFINED = 'The given object is not defined in source object';
+const STRING_MATCHING = (rules, objectToCompare) => `String matching occured for the given rule, Rule data: ${rules}, Source data: ${objectToCompare}`;
+const FUNCTION_EXECUTED = 'Function was executed for the given rule';
+const VALUE_EQUATED = (rules, objectToCompare) => `Value equated for the given rule, Rule data: ${rules}, Source data: ${objectToCompare}`;
+
 function matchBaseCase(i, objectToCompare, rules, covered) {
-  console.log(i, objectToCompare, rules, covered);
-  if(covered[i]) {
-    console.warn('Warning! duplicate flag found');
+  
+  if(objectToCompare === undefined) {
+    return {
+      value: false,
+      message: OBJECT_NOT_DEFINED,
+    };
   }
 
-  if(objectToCompare === undefined) {
-    console.error('object not defined');
-    return false;
+  if(typeof rules === 'string') {
+    return {
+      value: rules === objectToCompare, 
+      message: STRING_MATCHING(rules, objectToCompare),
+    };
   }
 
   if(!Object.keys(rules).length) {
     if(typeof rules === "function") {
-      return rules(objectToCompare);
+      return { 
+        value: rules(objectToCompare), 
+        message: FUNCTION_EXECUTED 
+      };
     } else {
-      return rules === objectToCompare;
+      return { 
+        value: rules === objectToCompare, message: VALUE_EQUATED(rules, objectToCompare),
+      };
     }
   }
 
   return 'continue';
 }
 
-function recursiveRuleUtil(i, objectToCompare, rules, covered) {
+function recursiveRuleUtil(i, objectToCompare, rules, covered, DEBUG) {
+  let count = 0, result = true;
   let baseCase = matchBaseCase(i, objectToCompare, rules, covered);
-  // console.log('base', baseCase);
+  const { value, message } = baseCase;
+
   if(baseCase !== 'continue') {
-    // console.log('called');
-    covered[i] = baseCase;
-    return baseCase;
+    covered.value = value;
+    covered.message = message;
+    return value;
   }
   
 
   for(v in rules) {
-    if(covered[v]) {
-      continue;
+    covered[v] = {};
+    result = result && recursiveRuleUtil(v, objectToCompare[v], rules[v], covered[v]);
+    if(!result) {
+      return result;
     }
-    recursiveRuleUtil(v, objectToCompare[v], rules[v], covered);
+    count++;
+  }
+
+  if(count === Object.keys(rules).length) {
+    console.log('enas', i);
+    return result;
   }
 }
 
-function matchRule(objectToCompare, rules) {
-  let covered = {}, final = true;
+function matchRule(objectToCompare, rules, DEBUG = false) {
+  let covered = {}, result = true;
 
   for(i in rules) {
-    final = recursiveRuleUtil(i, objectToCompare[i], rules[i], covered);
-    console.log('fin', covered);
+    covered[i] = {};
+    result = result && recursiveRuleUtil(i, objectToCompare, rules[i], covered[i]);
+    if(!result) {
+      return handleResult(result, covered, DEBUG);
+    }
   }
-  return final;
+
+  return handleResult(result, covered, DEBUG);
 }
 
-console.log(matchRule(user, RULES));
+console.log(matchRule(user, [RULE_OR_1, RULE_OR_2], true));
+
+function handleResult(result, covered, DEBUG) {
+  if(DEBUG) {
+    return {
+      result,
+      trace: covered,
+    };
+  }
+
+  return result;
+}
+
