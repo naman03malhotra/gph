@@ -233,13 +233,13 @@ function recursiveRuleUtil(i, objectToCompare, rules, covered, DEBUG) {
   }
 }
 
-function matchRule(objectToCompare, rules, DEBUG = false) {
-  let covered = {}, result = true;
+function matchRule(objectToCompare, rules, operator = 'and', DEBUG = false) {
+  let covered = {}, result = operator === 'and' ? true : false;
 
   for(i in rules) {
     covered[i] = {};
-    result = result && recursiveRuleUtil(i, objectToCompare, rules[i], covered[i]);
-    if(!result) {
+    result = operator === 'and' ? (result && recursiveRuleUtil(i, objectToCompare, rules[i], covered[i])) : (result || recursiveRuleUtil(i, objectToCompare, rules[i], covered[i]));
+    if(operator === 'and' ? !result : result) {
       return handleResult(result, covered, DEBUG);
     }
   }
@@ -247,7 +247,7 @@ function matchRule(objectToCompare, rules, DEBUG = false) {
   return handleResult(result, covered, DEBUG);
 }
 
-console.log(matchRule(user, [RULE_OR_1, RULE_OR_2], true));
+console.log(matchRule(user, [RULE_OR_1, RULE_OR_2], 'or', true));
 
 function handleResult(result, covered, DEBUG) {
   if(DEBUG) {
