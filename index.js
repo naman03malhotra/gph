@@ -26,21 +26,6 @@ const graph = {
   x: { y:1 },
 };
 
-o(e);
-{
-  a: {
-    b: 4,
-    c: 5,
-    d: 6,
-  }
-}
-
-{
-  a: [b ,c, d],
-}
-(v+e)
-
-
 function bfs(graph) {
   let trace = {}, queue = [], order = [], toExplore;
 
