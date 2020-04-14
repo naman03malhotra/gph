@@ -203,13 +203,16 @@ const user = {
 }
 
 const OBJECT_NOT_DEFINED = 'The given object is not defined in source object';
-const STRING_MATCHING = (rules, sourceToCompare) => `String matching occured for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
-const FUNCTION_EXECUTED = (value) => `Function was executed for the given rule with value: ${value}`;
-const VALUE_EQUATED = (rules, sourceToCompare) => `Value equated for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
+const STRING_MATCHING = (rules, sourceToCompare) =>
+  `String matching occured for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
+const FUNCTION_EXECUTED = (value) =>
+  `Function was executed for the given rule with value: ${value}`;
+const VALUE_EQUATED = (rules, sourceToCompare) =>
+  `Value equated for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
 
 function matchBaseCase(sourceToCompare, rules) {
   // checking if the source object is preset according to the rules
-  if(sourceToCompare === undefined) {
+  if (sourceToCompare === undefined) {
     return {
       value: false,
       message: OBJECT_NOT_DEFINED,
@@ -217,76 +220,82 @@ function matchBaseCase(sourceToCompare, rules) {
   }
 
   // if there is a string match then do compare
-  if(typeof rules === 'string') {
+  if (typeof rules === 'string') {
     return {
-      value: rules === sourceToCompare, 
+      value: rules === sourceToCompare,
       message: STRING_MATCHING(rules, sourceToCompare),
     };
   }
 
   // if no more nested keys are present in the object then
-  if(!Object.keys(rules).length) {
+  if (!Object.keys(rules).length) {
     // check for function then execute it with the current value of source object
-    if(typeof rules === "function") {
-      return { 
-        value: rules(sourceToCompare), 
+    if (typeof rules === 'function') {
+      return {
+        value: rules(sourceToCompare),
         message: FUNCTION_EXECUTED(sourceToCompare),
       };
-    } 
+    }
 
     // else match the value and return with message
-    return { 
-      value: rules === sourceToCompare, 
+    return {
+      value: rules === sourceToCompare,
       message: VALUE_EQUATED(rules, sourceToCompare),
     };
   }
 
   // return continue if no condition is matched
-  return { value: 'continue' };
+  return { value: 'continue', message: '' };
 }
 
-function recursiveRuleUtil(currentKey, sourceToCompare, rules, trace, DEBUG) {
+function recursiveRuleUtil(sourceToCompare, rules, trace) {
   // initializing count with zero
   let count = 0;
 
-  // initializing result with true as rules inside a single object are always compared with AND  
+  // initializing result with true as rules inside a single object are always compared with AND
   let result = true;
 
   // matching base case to exit from recursion
   const { value, message } = matchBaseCase(sourceToCompare, rules);
 
   // if base condition is met, then set trace value and message, and return boolean value
-  if(value !== 'continue') {
+  if (value !== 'continue') {
     trace.value = value;
     trace.message = message;
     return value;
   }
 
   // DFS in remaining nodes of the object
-  for(currentDeepKey in rules) {
+  for (currentDeepKey in rules) {
     // setting key in trace for next depth level
     trace[currentDeepKey] = {};
 
     // combining results using AND within a single rule
-    result = result && recursiveRuleUtil(currentDeepKey, sourceToCompare[currentDeepKey], rules[currentDeepKey], trace[currentDeepKey]);
+    result =
+      result &&
+      recursiveRuleUtil(
+        sourceToCompare[currentDeepKey],
+        rules[currentDeepKey],
+        trace[currentDeepKey]
+      );
 
     // return result if the first negative case is encountered in case of AND
-    if(!result) {
+    if (!result) {
       return result;
     }
     count++;
   }
 
   // this condition will hit when all the rules will be matched in case of AND
-  if(count === Object.keys(rules).length) {
+  if (count === Object.keys(rules).length) {
     return result;
   }
 }
 
 function handleResult(result, trace, debug) {
   // if debug mode is on, then return result and log trace
-  if(debug) {
-    console.log('Trace object from matchRule:', trace)
+  if (debug) {
+    console.log('Trace object from matchRule:', trace);
   }
 
   return result;
@@ -295,24 +304,27 @@ function handleResult(result, trace, debug) {
 function matchRule({ source, rules, operator = 'and', debug = false }) {
   const trace = {};
   // initial value for result to compare with based on the operator
-  let result = operator === 'and' ? true : false; 
+  let result = operator === 'and' ? true : false;
 
   // condition to handle if a single role is passed
   rules = Array.isArray(rules) ? rules : [rules];
 
   // outer loop to iterate multiple rules
-  for(rule in rules) {
+  for (rule in rules) {
     // initializing empty trace object with key of first rule
     trace[rule] = {};
 
-    // update and compare with true if the operator is AND, with false if the operator is OR 
-    result = operator === 'and' ? (result && recursiveRuleUtil(rule, source, rules[rule], trace[rule])) : (result || recursiveRuleUtil(rule, source, rules[rule], trace[rule]));
+    // update and compare with true if the operator is AND, with false if the operator is OR
+    result =
+      operator === 'and'
+        ? result && recursiveRuleUtil(source, rules[rule], trace[rule])
+        : result || recursiveRuleUtil(source, rules[rule], trace[rule]);
 
-    /** 
+    /**
      * return result if the first negative case is encountered in case of AND
      * return result if the first positive case is encountered in case of OR
-    */
-    if(operator === 'and' ? !result : result) {
+     */
+    if (operator === 'and' ? !result : result) {
       return handleResult(result, trace, debug);
     }
   }
@@ -326,11 +338,11 @@ const config = {
   source: user,
   // you can pass multiple rules as array
   rules: RULES,
-  // works in case if you pass multiple rules, default 'and' (optional) 
+  // works in case if you pass multiple rules, default 'and' (optional)
   operator: 'and',
-  // If true, logs the trace object, default false (optional) 
+  // If true, logs the trace object for debugging, default false (optional)
   debug: true,
-}
+};
 
 console.log(matchRule(config));
 
