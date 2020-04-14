@@ -27,6 +27,7 @@ const graph = {
 };
 
 
+
 function bfs(graph) {
   let trace = {}, queue = [], order = [], toExplore;
 
@@ -93,7 +94,44 @@ function recursiveBfs(graph) {
 // console.log('bfs',bfs(graph));
 // console.log('bfs_rec', recursiveBfs(graph));
 
+const graph2 = {
+  a: {
+    b: {
+      c: {
+        d: {
+          x: 1,
+        }
+      },
+      e: {
+        h: 1,
+      }
+    },
+    f: 1,
+  },
+}
+
+const graph3 = {
+  a: {
+    b: 1,
+    f: 1,
+  },
+  b: {
+    c: 1,
+    e: 1,
+  },
+  c: {
+    d: 1,
+  },
+  d: {
+    x: 1,
+  },
+  e: {
+    h: 1,
+  },
+}
+
 function recDfs(index, graph, trace) {
+    console.log(index, JSON.stringify(trace));
     if(trace[index]) {
       return;
     }
@@ -116,7 +154,7 @@ function dfs(graph) {
   return Object.keys(trace);
 }
 
-// console.log('dfs_rec', dfs(graph));
+// console.log('dfs_rec', dfs(graph3));
 
 
 const RULES = {
@@ -166,7 +204,7 @@ const user = {
 
 const OBJECT_NOT_DEFINED = 'The given object is not defined in source object';
 const STRING_MATCHING = (rules, sourceToCompare) => `String matching occured for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
-const FUNCTION_EXECUTED = 'Function was executed for the given rule';
+const FUNCTION_EXECUTED = (value) => `Function was executed for the given rule with value: ${value}`;
 const VALUE_EQUATED = (rules, sourceToCompare) => `Value equated for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
 
 function matchBaseCase(sourceToCompare, rules) {
@@ -192,7 +230,7 @@ function matchBaseCase(sourceToCompare, rules) {
     if(typeof rules === "function") {
       return { 
         value: rules(sourceToCompare), 
-        message: FUNCTION_EXECUTED 
+        message: FUNCTION_EXECUTED(sourceToCompare),
       };
     } 
 
@@ -210,7 +248,7 @@ function matchBaseCase(sourceToCompare, rules) {
 function recursiveRuleUtil(currentKey, sourceToCompare, rules, trace, DEBUG) {
   // initializing count with zero
   let count = 0;
-  
+
   // initializing result with true as rules inside a single object are always compared with AND  
   let result = true;
 
@@ -246,15 +284,12 @@ function recursiveRuleUtil(currentKey, sourceToCompare, rules, trace, DEBUG) {
 }
 
 function handleResult(result, trace, debug) {
-  // if debug mode is on, then return result with trace
+  // if debug mode is on, then return result and log trace
   if(debug) {
-    return {
-      result,
-      trace,
-    };
+    console.log('Trace object from matchRule:', trace)
   }
 
-  return { result };
+  return result;
 }
 
 function matchRule({ source, rules, operator = 'and', debug = false }) {
@@ -289,14 +324,13 @@ function matchRule({ source, rules, operator = 'and', debug = false }) {
 const config = {
   // source and rules are required
   source: user,
-  rules: RULE_OR_1,
-  // (optional) default 'and'
-  operator: 'or',
-  // (optional) default false
+  // you can pass multiple rules as array
+  rules: RULES,
+  // works in case if you pass multiple rules, default 'and' (optional) 
+  operator: 'and',
+  // If true, logs the trace object, default false (optional) 
   debug: true,
 }
 
 console.log(matchRule(config));
-
-
 
