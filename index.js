@@ -199,8 +199,8 @@ const user = {
   temp: 10,
   role: 'role_admin',
 }
-
-const OBJECT_NOT_DEFINED = 'The given object is not defined in source object';
+export const NO_SOURCE_PASSED_ERR = 'Please pass source and rules data: matchRule(source, rules)';
+const OBJECT_NOT_DEFINED = (key) => `The given key (${key}) is not defined in source object`;
 const STRING_MATCHING = (rules, sourceToCompare) =>
   `String matching occured for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
 const FUNCTION_EXECUTED = (value) =>
@@ -208,12 +208,12 @@ const FUNCTION_EXECUTED = (value) =>
 const VALUE_EQUATED = (rules, sourceToCompare) =>
   `Value equated for the given rule, Rule data: ${rules}, Source data: ${sourceToCompare}`;
 
-function matchBaseCase(sourceToCompare, rules) {
+function matchBaseCase(sourceToCompare, rules, key, originalSource) {
   // checking if the source object is preset according to the rules
   if (sourceToCompare === undefined) {
     return {
       value: false,
-      message: OBJECT_NOT_DEFINED,
+      message: OBJECT_NOT_DEFINED(key),
     };
   }
 
@@ -230,7 +230,7 @@ function matchBaseCase(sourceToCompare, rules) {
     // check for function then execute it with the current value of source object
     if (typeof rules === 'function') {
       return {
-        value: rules(sourceToCompare),
+        value: rules(sourceToCompare, originalSource),
         message: FUNCTION_EXECUTED(sourceToCompare),
       };
     }
@@ -246,15 +246,12 @@ function matchBaseCase(sourceToCompare, rules) {
   return { value: 'continue', message: '' };
 }
 
-function recursiveRuleUtil(sourceToCompare, rules, trace) {
-  // initializing count with zero
-  let count = 0;
-
+function recursiveRuleUtil(sourceToCompare, rules, trace, key, originalSource) {
   // initializing result with true as rules inside a single object are always compared with AND
   let result = true;
 
   // matching base case to exit from recursion
-  const { value, message } = matchBaseCase(sourceToCompare, rules);
+  const { value, message } = matchBaseCase(sourceToCompare, rules, key, originalSource);
 
   // if base condition is met, then set trace value and message, and return boolean value
   if (value !== 'continue') {
@@ -264,7 +261,7 @@ function recursiveRuleUtil(sourceToCompare, rules, trace) {
   }
 
   // DFS in remaining nodes of the object
-  for (currentDeepKey in rules) {
+  for (const currentDeepKey in rules) {
     // setting key in trace for next depth level
     trace[currentDeepKey] = {};
 
@@ -274,20 +271,18 @@ function recursiveRuleUtil(sourceToCompare, rules, trace) {
       recursiveRuleUtil(
         sourceToCompare[currentDeepKey],
         rules[currentDeepKey],
-        trace[currentDeepKey]
+        trace[currentDeepKey],
+        currentDeepKey,
+        originalSource
       );
 
     // return result if the first negative case is encountered in case of AND
     if (!result) {
       return result;
     }
-    count++;
   }
 
-  // this condition will hit when all the rules will be matched in case of AND
-  if (count === Object.keys(rules).length) {
-    return result;
-  }
+  return result;
 }
 
 function handleResult(result, trace, debug) {
@@ -299,48 +294,47 @@ function handleResult(result, trace, debug) {
   return result;
 }
 
-function matchRule({ source, rules, operator = 'and', debug = false }) {
+function returnBaseError() {
+  console.error(NO_SOURCE_PASSED_ERR);
+  return false;
+}
+
+function matchRule(source, rules, options = {}) {
   const trace = {};
-  // initial value for result to compare with based on the operator
+  const { operator = 'and', debug = false } = options;
+
+  if (!source || !rules) {
+    return returnBaseError();
+  }
+
+  // initial value for result to concatinate outputs from other rules
   let result = operator === 'and' ? true : false;
 
   // condition to handle if a single role is passed
   rules = Array.isArray(rules) ? rules : [rules];
 
   // outer loop to iterate multiple rules
-  for (rule in rules) {
+  for (const rule in rules) {
     // initializing empty trace object with key of first rule
     trace[rule] = {};
 
     // update and compare with true if the operator is AND, with false if the operator is OR
     result =
       operator === 'and'
-        ? result && recursiveRuleUtil(source, rules[rule], trace[rule])
-        : result || recursiveRuleUtil(source, rules[rule], trace[rule]);
+        ? result && recursiveRuleUtil(source, rules[rule], trace[rule], rule, source)
+        : result || recursiveRuleUtil(source, rules[rule], trace[rule], rule, source);
 
     /**
      * return result if the first negative case is encountered in case of AND
      * return result if the first positive case is encountered in case of OR
      */
     if (operator === 'and' ? !result : result) {
-      return handleResult(result, trace, debug);
+      break;
     }
   }
 
   // this condition will hit when all the rules will be matched in case of AND, and no rules being matched in case of OR
   return handleResult(result, trace, debug);
 }
-
-const config = {
-  // source and rules are required
-  source: user,
-  // you can pass multiple rules as array
-  rules: RULES,
-  // works in case if you pass multiple rules, default 'and' (optional)
-  operator: 'and',
-  // If true, logs the trace object for debugging, default false (optional)
-  debug: true,
-};
-
-console.log(matchRule(config));
+console.log(matchRule(user, RULES));
 
